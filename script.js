@@ -20,6 +20,10 @@ const MATERIALS = {
     { name: "Stair Diagonal Brace", weightPerUnit: 12 },
     { name: "Stair Base Plate", weightPerUnit: 6 },
   ],
+  additional: [
+    { name: "6' Ladder", weightPerUnit: 20 },
+    { name: "Swing Gate", weightPerUnit: 15 },
+  ],
 };
 
 window.onload = function () {
@@ -44,7 +48,10 @@ window.onload = function () {
     const manhourRate = parseFloat(document.getElementById("manhourRate").value) || 0;
     const loadType = document.getElementById("loadType").value;
     const standard = document.getElementById("standard").value || "OSHA";
-    const windSpeed = parseFloat(document.getElementById("windSpeed").value) || 51.6; // Default 23 m/s (51.6 mph)
+    const windSpeed = parseFloat(document.getElementById("windSpeed").value) || 51.6;
+    const deckOption = document.querySelector('input[name="deckOption"]:checked').value;
+    const includeLadders = document.getElementById("includeLadders").checked;
+    const includeSwingGates = document.getElementById("includeSwingGates").checked;
     const includeStair = document.getElementById("stairTower").checked;
 
     // Validate inputs
@@ -84,7 +91,7 @@ window.onload = function () {
     materials.push({ name: `Horizontal ${bayLength.toFixed(1)}′`, qty: baysWide * (baysLong + 1) * liftsHigh, weightPerUnit: MATERIALS.base[3].weightPerUnit * (bayLength / MATERIALS.base[3].baseLength) });
     materials.push({ name: `Horizontal ${bayWidth.toFixed(1)}′`, qty: baysLong * (baysWide + 1) * liftsHigh, weightPerUnit: MATERIALS.base[4].weightPerUnit * (bayWidth / MATERIALS.base[4].baseLength) });
     materials.push({ name: "Diagonal Braces", qty: totalBays * liftsHigh, weightPerUnit: MATERIALS.base[5].weightPerUnit });
-    materials.push({ name: `Steel Decks ${bayLength.toFixed(1)}′`, qty: totalBays, weightPerUnit: MATERIALS.base[6].weightPerUnit * (bayLength / MATERIALS.base[6].baseLength) });
+    materials.push({ name: `Steel Decks ${bayLength.toFixed(1)}′`, qty: deckOption === "every7" ? Math.ceil(liftsHigh / 1.0769) * totalBays : (liftsHigh > 0 ? totalBays : 0), weightPerUnit: MATERIALS.base[6].weightPerUnit * (bayLength / MATERIALS.base[6].baseLength) });
     materials.push({ name: "Top Guardrails", qty: baysWide * 2 + baysLong * 2, weightPerUnit: MATERIALS.base[7].weightPerUnit });
     materials.push({ name: "Toe Boards", qty: baysWide * 2 + baysLong * 2, weightPerUnit: MATERIALS.base[8].weightPerUnit });
 
@@ -106,6 +113,16 @@ window.onload = function () {
       materials.push({ name: "Stair Ledger", qty: stairTowers * barsPerLift * stairLifts, weightPerUnit: MATERIALS.stair[4].weightPerUnit });
       materials.push({ name: "Stair Diagonal Brace", qty: stairTowers * diagonalsPerLift * stairLifts, weightPerUnit: MATERIALS.stair[5].weightPerUnit });
       materials.push({ name: "Stair Base Plate", qty: stairTowers * basePlatesPerTower, weightPerUnit: MATERIALS.stair[6].weightPerUnit });
+    }
+
+    // Add 6' ladders if included
+    if (includeLadders) {
+      materials.push({ name: "6' Ladder", qty: baysWide * liftsHigh, weightPerUnit: MATERIALS.additional[0].weightPerUnit });
+    }
+
+    // Add swing gates if included
+    if (includeSwingGates) {
+      materials.push({ name: "Swing Gate", qty: baysWide, weightPerUnit: MATERIALS.additional[1].weightPerUnit }); // One per bay width at top
     }
 
     // Calculate total weight
@@ -130,7 +147,7 @@ window.onload = function () {
     const windPressure = 0.00256 * (windSpeed ** 2) / 144; // psf, converted to lbs/ft²
     const exposedArea = (width * height) / 10.764; // m² to ft² for wind exposure
     const windLoad = windPressure * exposedArea; // lbs
-    const adjustedSwlLbs = baseSwlLbs - windLoad; // Reduce SWL by wind load
+    const adjustedSwlLbs = baseSwlLbs - windLoad;
     const effectiveSwlLbs = Math.max(adjustedSwlLbs, 0); // Ensure non-negative
 
     // Leg load check
@@ -190,7 +207,7 @@ window.onload = function () {
     addAddonOutput(materials, materialList, manhourRate);
 
     // Save calculation
-    saveCalculation(materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed);
+    saveCalculation(materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed, deckOption, includeLadders, includeSwingGates);
   });
 
   // Add reset button
@@ -208,7 +225,7 @@ window.onload = function () {
   const saveButton = document.createElement("button");
   saveButton.textContent = "Save Calculation";
   resetButton.insertAdjacentElement("afterend", saveButton);
-  saveButton.addEventListener("click", () => saveCalculation(materials, document.getElementById("width").value, document.getElementById("length").value, document.getElementById("height").value, document.getElementById("stairTower").checked, document.getElementById("manhourRate").value, document.getElementById("loadType").value, document.getElementById("standard").value, document.getElementById("bayLength").value, document.getElementById("bayWidth").value, document.getElementById("windSpeed").value));
+  saveButton.addEventListener("click", () => saveCalculation(materials, document.getElementById("width").value, document.getElementById("length").value, document.getElementById("height").value, document.getElementById("stairTower").checked, document.getElementById("manhourRate").value, document.getElementById("loadType").value, document.getElementById("standard").value, document.getElementById("bayLength").value, document.getElementById("bayWidth").value, document.getElementById("windSpeed").value, document.querySelector('input[name="deckOption"]:checked').value, document.getElementById("includeLadders").checked, document.getElementById("includeSwingGates").checked));
 
   // Add load button
   const loadButton = document.createElement("button");
@@ -283,8 +300,8 @@ window.onload = function () {
   }
 
   // Save calculation to localStorage
-  function saveCalculation(materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed) {
-    const calculation = { materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed, timestamp: new Date().toISOString() };
+  function saveCalculation(materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed, deckOption, includeLadders, includeSwingGates) {
+    const calculation = { materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed, deckOption, includeLadders, includeSwingGates, timestamp: new Date().toISOString() };
     localStorage.setItem("lastCalculation", JSON.stringify(calculation));
   }
 
@@ -292,7 +309,7 @@ window.onload = function () {
   function loadCalculation() {
     const saved = localStorage.getItem("lastCalculation");
     if (saved) {
-      const { materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed } = JSON.parse(saved);
+      const { materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed, deckOption, includeLadders, includeSwingGates } = JSON.parse(saved);
       document.getElementById("width").value = width;
       document.getElementById("length").value = length;
       document.getElementById("height").value = height;
@@ -303,6 +320,9 @@ window.onload = function () {
       document.getElementById("bayLength").value = bayLength || 7;
       document.getElementById("bayWidth").value = bayWidth || 7;
       document.getElementById("windSpeed").value = windSpeed || 51.6;
+      document.querySelector(`input[name="deckOption"][value="${deckOption}"]`).checked = true;
+      document.getElementById("includeLadders").checked = includeLadders;
+      document.getElementById("includeSwingGates").checked = includeSwingGates;
 
       let totalWeight = 0;
       materials.forEach(item => {
