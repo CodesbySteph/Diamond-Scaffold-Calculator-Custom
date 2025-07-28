@@ -43,6 +43,8 @@ window.onload = function () {
     const bayWidth = parseFloat(document.getElementById("bayWidth").value) || 7;
     const manhourRate = parseFloat(document.getElementById("manhourRate").value) || 0;
     const loadType = document.getElementById("loadType").value;
+    const standard = document.getElementById("standard").value || "OSHA";
+    const windSpeed = parseFloat(document.getElementById("windSpeed").value) || 51.6; // Default 23 m/s (51.6 mph)
     const includeStair = document.getElementById("stairTower").checked;
 
     // Validate inputs
@@ -56,6 +58,10 @@ window.onload = function () {
     }
     if (!isNaN(manhourRate) && manhourRate < 0) {
       showError("Manhour rate cannot be negative.");
+      return;
+    }
+    if (isNaN(windSpeed) || windSpeed < 0) {
+      showError("Please enter a valid non-negative wind speed.");
       return;
     }
 
@@ -102,17 +108,44 @@ window.onload = function () {
       materials.push({ name: "Stair Base Plate", qty: stairTowers * basePlatesPerTower, weightPerUnit: MATERIALS.stair[6].weightPerUnit });
     }
 
-    // Calculate total weight and check load capacity
+    // Calculate total weight
     let totalWeight = 0;
     materials.forEach(item => {
       totalWeight += item.qty * item.weightPerUnit;
     });
 
-    const loadRatings = { light: 120, medium: 240, heavy: 450 }; // kg/m²
+    // Load ratings based on selected standard
+    const loadRatings = {
+      OSHA: { light: 120, medium: 240, heavy: 360 }, // kg/m²
+      BSEN: { light: 150, medium: 300, heavy: 450 },
+      ASNZS: { light: 100, medium: 200, heavy: 300 },
+    };
+    const selectedRatings = loadRatings[standard] || loadRatings.OSHA;
     const platformArea = (width * length) / 10.764; // Convert ft² to m²
-    const safetyFactor = 4; // OSHA standard
-    const swl = (loadRatings[loadType] * platformArea) / safetyFactor; // kg
-    const swlLbs = swl * 2.20462; // Convert kg to lbs
+    const safetyFactor = 4;
+    const baseSwl = (selectedRatings[loadType] * platformArea) / safetyFactor; // kg
+    const baseSwlLbs = baseSwl * 2.20462; // Convert kg to lbs
+
+    // Wind load calculation (simplified per ASCE 7-16/TG20:21)
+    const windPressure = 0.00256 * (windSpeed ** 2) / 144; // psf, converted to lbs/ft²
+    const exposedArea = (width * height) / 10.764; // m² to ft² for wind exposure
+    const windLoad = windPressure * exposedArea; // lbs
+    const adjustedSwlLbs = baseSwlLbs - windLoad; // Reduce SWL by wind load
+    const effectiveSwlLbs = Math.max(adjustedSwlLbs, 0); // Ensure non-negative
+
+    // Leg load check
+    const legLoad = totalWeight / ((baysWide + 1) * (baysLong + 1)); // lbs per standard
+    const maxLegLoad = 1000; // Example maximum per OSHA/AISC
+
+    // Tie duty calculation (per TG20:21/OSHA)
+    const tieSpacingVertical = 16; // ft, TG20:21 recommendation
+    const tieSpacingHorizontal = 10; // ft, TG20:21 recommendation
+    const tiesVertical = Math.ceil(height / tieSpacingVertical);
+    const tiesHorizontal = Math.max(Math.ceil(length / tieSpacingHorizontal), Math.ceil(width / tieSpacingHorizontal));
+    const totalTies = tiesVertical * tiesHorizontal;
+    const tieCapacity = 1370; // lbs, TG20:21 minimum (6.1 kN)
+    const requiredTieStrength = windLoad / totalTies; // lbs per tie
+    const tieCheck = requiredTieStrength <= tieCapacity ? "Pass" : "Fail: Exceeds min capacity (1370 lbs)";
 
     // Render material list as a table
     materialList.innerHTML = `
@@ -143,7 +176,11 @@ window.onload = function () {
         </tbody>
       </table>
       <h3>Total Scaffold Weight: ${totalWeight.toFixed(2)} lbs</h3>
-      <p><strong>Safe Working Load (SWL):</strong> ${swlLbs.toFixed(2)} lbs (${loadType} duty) - ${totalWeight <= swlLbs ? "Pass" : "Fail: Exceeds SWL"}</p>
+      <p><strong>Base Safe Working Load (SWL):</strong> ${baseSwlLbs.toFixed(2)} lbs (${loadType} duty, ${standard})</p>
+      <p><strong>Wind Load:</strong> ${windLoad.toFixed(2)} lbs (at ${windSpeed} mph)</p>
+      <p><strong>Adjusted SWL:</strong> ${effectiveSwlLbs.toFixed(2)} lbs - ${totalWeight <= effectiveSwlLbs ? "Pass" : "Fail: Exceeds SWL"}</p>
+      <p><strong>Leg Load Check:</strong> ${legLoad.toFixed(2)} lbs/standard - ${legLoad <= maxLegLoad ? "Pass" : "Fail: Exceeds max load (1000 lbs)"}</p>
+      <p><strong>Tie Duty:</strong> ${totalTies} ties required (${tiesVertical} vertical x ${tiesHorizontal} horizontal) - ${tieCheck}</p>
     `;
 
     // Draw 2D preview (top-down view)
@@ -153,7 +190,7 @@ window.onload = function () {
     addAddonOutput(materials, materialList, manhourRate);
 
     // Save calculation
-    saveCalculation(materials, width, length, height, includeStair, manhourRate, loadType, bayLength, bayWidth);
+    saveCalculation(materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed);
   });
 
   // Add reset button
@@ -171,7 +208,7 @@ window.onload = function () {
   const saveButton = document.createElement("button");
   saveButton.textContent = "Save Calculation";
   resetButton.insertAdjacentElement("afterend", saveButton);
-  saveButton.addEventListener("click", () => saveCalculation(materials, document.getElementById("width").value, document.getElementById("length").value, document.getElementById("height").value, document.getElementById("stairTower").checked, document.getElementById("manhourRate").value, document.getElementById("loadType").value, document.getElementById("bayLength").value, document.getElementById("bayWidth").value));
+  saveButton.addEventListener("click", () => saveCalculation(materials, document.getElementById("width").value, document.getElementById("length").value, document.getElementById("height").value, document.getElementById("stairTower").checked, document.getElementById("manhourRate").value, document.getElementById("loadType").value, document.getElementById("standard").value, document.getElementById("bayLength").value, document.getElementById("bayWidth").value, document.getElementById("windSpeed").value));
 
   // Add load button
   const loadButton = document.createElement("button");
@@ -246,8 +283,8 @@ window.onload = function () {
   }
 
   // Save calculation to localStorage
-  function saveCalculation(materials, width, length, height, includeStair, manhourRate, loadType, bayLength, bayWidth) {
-    const calculation = { materials, width, length, height, includeStair, manhourRate, loadType, bayLength, bayWidth, timestamp: new Date().toISOString() };
+  function saveCalculation(materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed) {
+    const calculation = { materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed, timestamp: new Date().toISOString() };
     localStorage.setItem("lastCalculation", JSON.stringify(calculation));
   }
 
@@ -255,26 +292,46 @@ window.onload = function () {
   function loadCalculation() {
     const saved = localStorage.getItem("lastCalculation");
     if (saved) {
-      const { materials, width, length, height, includeStair, manhourRate, loadType, bayLength, bayWidth } = JSON.parse(saved);
+      const { materials, width, length, height, includeStair, manhourRate, loadType, standard, bayLength, bayWidth, windSpeed } = JSON.parse(saved);
       document.getElementById("width").value = width;
       document.getElementById("length").value = length;
       document.getElementById("height").value = height;
       document.getElementById("stairTower").checked = includeStair;
       document.getElementById("manhourRate").value = manhourRate || "";
       document.getElementById("loadType").value = loadType || "light";
-      document.getElementById("bayLength").value = bayLength || 7; // Default to 7 if undefined
-      document.getElementById("bayWidth").value = bayWidth || 7; // Default to 7 if undefined
+      document.getElementById("standard").value = standard || "OSHA";
+      document.getElementById("bayLength").value = bayLength || 7;
+      document.getElementById("bayWidth").value = bayWidth || 7;
+      document.getElementById("windSpeed").value = windSpeed || 51.6;
 
       let totalWeight = 0;
       materials.forEach(item => {
         totalWeight += item.qty * item.weightPerUnit;
       });
 
-      const loadRatings = { light: 120, medium: 240, heavy: 450 }; // kg/m²
+      const loadRatings = {
+        OSHA: { light: 120, medium: 240, heavy: 360 },
+        BSEN: { light: 150, medium: 300, heavy: 450 },
+        ASNZS: { light: 100, medium: 200, heavy: 300 },
+      };
+      const selectedRatings = loadRatings[standard] || loadRatings.OSHA;
       const platformArea = (width * length) / 10.764; // Convert ft² to m²
       const safetyFactor = 4;
-      const swl = (loadRatings[loadType] * platformArea) / safetyFactor; // kg
-      const swlLbs = swl * 2.20462; // Convert kg to lbs
+      const baseSwl = (selectedRatings[loadType] * platformArea) / safetyFactor; // kg
+      const baseSwlLbs = baseSwl * 2.20462; // Convert kg to lbs
+      const windPressure = 0.00256 * ((windSpeed || 51.6) ** 2) / 144; // psf
+      const exposedArea = (width * height) / 10.764; // m² to ft²
+      const windLoad = windPressure * exposedArea; // lbs
+      const adjustedSwlLbs = baseSwlLbs - windLoad;
+      const effectiveSwlLbs = Math.max(adjustedSwlLbs, 0); // Ensure non-negative
+      const legLoad = totalWeight / ((Math.ceil(width / (bayWidth || 7)) + 1) * (Math.ceil(length / (bayLength || 7)) + 1));
+      const maxLegLoad = 1000; // Example maximum per OSHA/AISC
+      const tiesVertical = Math.ceil(height / 16);
+      const tiesHorizontal = Math.max(Math.ceil(length / 10), Math.ceil(width / 10));
+      const totalTies = tiesVertical * tiesHorizontal;
+      const tieCapacity = 1370; // lbs, TG20:21 minimum
+      const requiredTieStrength = windLoad / totalTies;
+      const tieCheck = requiredTieStrength <= tieCapacity ? "Pass" : "Fail: Exceeds min capacity (1370 lbs)";
 
       materialList.innerHTML = `
         <h3>Material List (Loaded)</h3>
@@ -304,7 +361,11 @@ window.onload = function () {
           </tbody>
         </table>
         <h3>Total Scaffold Weight: ${totalWeight.toFixed(2)} lbs</h3>
-        <p><strong>Safe Working Load (SWL):</strong> ${swlLbs.toFixed(2)} lbs (${loadType} duty) - ${totalWeight <= swlLbs ? "Pass" : "Fail: Exceeds SWL"}</p>
+        <p><strong>Base Safe Working Load (SWL):</strong> ${baseSwlLbs.toFixed(2)} lbs (${loadType} duty, ${standard})</p>
+        <p><strong>Wind Load:</strong> ${windLoad.toFixed(2)} lbs (at ${windSpeed || 51.6} mph)</p>
+        <p><strong>Adjusted SWL:</strong> ${effectiveSwlLbs.toFixed(2)} lbs - ${totalWeight <= effectiveSwlLbs ? "Pass" : "Fail: Exceeds SWL"}</p>
+        <p><strong>Leg Load Check:</strong> ${legLoad.toFixed(2)} lbs/standard - ${legLoad <= maxLegLoad ? "Pass" : "Fail: Exceeds max load (1000 lbs)"}</p>
+        <p><strong>Tie Duty:</strong> ${totalTies} ties required (${tiesVertical} vertical x ${tiesHorizontal} horizontal) - ${tieCheck}</p>
       `;
 
       // Draw 2D preview
