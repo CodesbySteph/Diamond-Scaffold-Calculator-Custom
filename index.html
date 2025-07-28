@@ -32,10 +32,20 @@
 
       <label for="loadType">Load Type:</label>
       <select id="loadType" aria-label="Scaffold load type">
-        <option value="light">Light Duty (120 kg/m²)</option>
-        <option value="medium">Medium Duty (240 kg/m²)</option>
-        <option value="heavy">Heavy Duty (450 kg/m²)</option>
+        <option value="light">Light Duty</option>
+        <option value="medium">Medium Duty</option>
+        <option value="heavy">Heavy Duty</option>
       </select>
+
+      <label for="standard">Standard:</label>
+      <select id="standard" aria-label="Safety standard">
+        <option value="OSHA">OSHA (USA)</option>
+        <option value="BSEN">BS EN 12811-1 (Europe/UK)</option>
+        <option value="ASNZS">AS/NZS 1576 (Australia/NZ)</option>
+      </select>
+
+      <label for="windSpeed">Wind Speed (mph, optional):</label>
+      <input type="number" id="windSpeed" min="0" step="1" placeholder="51.6" aria-label="Wind speed in miles per hour">
 
       <label>
         <input type="checkbox" id="stairTower"> Include Stair Towers
