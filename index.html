@@ -51,6 +51,18 @@
         <input type="checkbox" id="stairTower"> Include Stair Towers
       </label>
 
+      <label>Deck Placement:</label>
+      <label><input type="radio" name="deckOption" value="every7" checked> Every 7'</label>
+      <label><input type="radio" name="deckOption" value="topOnly"> 1 at Top</label>
+
+      <label>
+        <input type="checkbox" id="includeLadders"> Include 6' Ladders
+      </label>
+
+      <label>
+        <input type="checkbox" id="includeSwingGates"> Include Swing Gates
+      </label>
+
       <button type="submit" id="calculate">Calculate</button>
     </form>
     <canvas id="scaffoldPreview" width="400" height="300" style="margin-top: 20px; border: 1px solid #ccc;"></canvas>
