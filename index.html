@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diamond Scaffold Services LLC - Ringlock Calculator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <h1>Diamond Scaffold Services LLC Ringlock Calculator</h1>
+  </header>
+  <main>
+    <form id="scaffold-form">
+      <label for="width">Width (ft):</label>
+      <input type="number" id="width" min="0" step="0.1" required aria-label="Width in feet">
+
+      <label for="length">Length (ft):</label>
+      <input type="number" id="length" min="0" step="0.1" required aria-label="Length in feet">
+
+      <label for="height">Height (ft):</label>
+      <input type="number" id="height" min="0" step="0.1" required aria-label="Height in feet">
+
+      <label for="bayLength">Bay Length (ft, optional):</label>
+      <input type="number" id="bayLength" min="0" step="0.1" placeholder="7" aria-label="Bay length in feet">
+
+      <label for="bayWidth">Bay Width (ft, optional):</label>
+      <input type="number" id="bayWidth" min="0" step="0.1" placeholder="7" aria-label="Bay width in feet">
+
+      <label for="manhourRate">Manhour Rate ($/hr, optional):</label>
+      <input type="number" id="manhourRate" min="0" step="0.1" placeholder="65" aria-label="Manhour rate in dollars per hour">
+
+      <label for="loadType">Load Type:</label>
+      <select id="loadType" aria-label="Scaffold load type">
+        <option value="light">Light Duty (120 kg/m²)</option>
+        <option value="medium">Medium Duty (240 kg/m²)</option>
+        <option value="heavy">Heavy Duty (450 kg/m²)</option>
+      </select>
+
+      <label>
+        <input type="checkbox" id="stairTower"> Include Stair Towers
+      </label>
+
+      <button type="submit" id="calculate">Calculate</button>
+    </form>
+    <canvas id="scaffoldPreview" width="400" height="300" style="margin-top: 20px; border: 1px solid #ccc;"></canvas>
+    <ul id="material-list"></ul>
+  </main>
+  <script src="script.js"></script>
+  <script src="addons_final_token_based.js"></script>
+</body>
+</html>
