@@ -3,11 +3,11 @@ const MATERIALS = {
   base: [
     { name: "Screw Jacks", weightPerUnit: 14 },
     { name: "Starter Collars", weightPerUnit: 4.18 },
-    { name: "Vertical 9'9\"", weightPerUnit: 33.73 },
-    { name: "Horizontal", weightPerUnit: 19.3, baseLength: 7 }, // Base for 7ft
-    { name: "Horizontal", weightPerUnit: 10.1, baseLength: 5.167 }, // Base for 5'2" (5.167ft)
+    { name: "Vertical 3m", weightPerUnit: 48 }, // Updated to 48 lbs for 3m O.D. 60mm S355
+    { name: "Horizontal", weightPerUnit: 28, baseLength: 7 }, // Updated to 28 lbs for 7’ O.D. 60mm
+    { name: "Horizontal", weightPerUnit: 15, baseLength: 5.167 }, // Adjusted for 5.167’ scaling
     { name: "Diagonal Braces", weightPerUnit: 12 },
-    { name: "Steel Decks", weightPerUnit: 49.5, baseLength: 7 }, // Base for 7ft
+    { name: "Steel Decks", weightPerUnit: 49.5, baseLength: 7 },
     { name: "Top Guardrails", weightPerUnit: 14.2 },
     { name: "Toe Boards", weightPerUnit: 5.5 },
   ],
@@ -21,8 +21,8 @@ const MATERIALS = {
     { name: "Stair Base Plate", weightPerUnit: 6 },
   ],
   additional: [
-    { name: "6' Ladder", weightPerUnit: 20 },
-    { name: "Swing Gate", weightPerUnit: 15 },
+    { name: "6' Ladder", weightPerUnit: 25 }, // Updated to 25 lbs
+    { name: "Swing Gate", weightPerUnit: 20 }, // Updated to 20 lbs
   ],
 };
 
@@ -76,7 +76,7 @@ window.onload = function () {
     clearErrors();
 
     // Calculate scaffold dimensions
-    const liftsHigh = Math.ceil(height / 6.5);
+    const liftsHigh = Math.ceil(height / 3); // Changed to 3m (9.84’) for heavy-duty alignment
     const baysWide = Math.ceil(width / bayWidth);
     const baysLong = Math.ceil(length / bayLength);
     const totalBays = baysWide * baysLong;
@@ -87,7 +87,7 @@ window.onload = function () {
     // Add base materials with dynamic weights
     materials.push({ name: "Screw Jacks", qty: (baysWide + 1) * (baysLong + 1), weightPerUnit: MATERIALS.base[0].weightPerUnit });
     materials.push({ name: "Starter Collars", qty: (baysWide + 1) * (baysLong + 1), weightPerUnit: MATERIALS.base[1].weightPerUnit });
-    materials.push({ name: "Vertical 9'9\"", qty: (baysWide + 1) * (baysLong + 1) * liftsHigh, weightPerUnit: MATERIALS.base[2].weightPerUnit });
+    materials.push({ name: "Vertical 3m", qty: (baysWide + 1) * (baysLong + 1) * liftsHigh, weightPerUnit: MATERIALS.base[2].weightPerUnit });
     materials.push({ name: `Horizontal ${bayLength.toFixed(1)}′`, qty: baysWide * (baysLong + 1) * liftsHigh, weightPerUnit: MATERIALS.base[3].weightPerUnit * (bayLength / MATERIALS.base[3].baseLength) });
     materials.push({ name: `Horizontal ${bayWidth.toFixed(1)}′`, qty: baysLong * (baysWide + 1) * liftsHigh, weightPerUnit: MATERIALS.base[4].weightPerUnit * (bayWidth / MATERIALS.base[4].baseLength) });
     materials.push({ name: "Diagonal Braces", qty: totalBays * liftsHigh, weightPerUnit: MATERIALS.base[5].weightPerUnit });
@@ -152,7 +152,7 @@ window.onload = function () {
 
     // Leg load check
     const legLoad = totalWeight / ((baysWide + 1) * (baysLong + 1)); // lbs per standard
-    const maxLegLoad = 1000; // Example maximum per OSHA/AISC
+    const maxLegLoad = 18000; // Updated to ~18,000 lbs for 80 kN
 
     // Tie duty calculation (per TG20:21/OSHA)
     const tieSpacingVertical = 16; // ft, TG20:21 recommendation
@@ -160,9 +160,9 @@ window.onload = function () {
     const tiesVertical = Math.ceil(height / tieSpacingVertical);
     const tiesHorizontal = Math.max(Math.ceil(length / tieSpacingHorizontal), Math.ceil(width / tieSpacingHorizontal));
     const totalTies = tiesVertical * tiesHorizontal;
-    const tieCapacity = 1370; // lbs, TG20:21 minimum (6.1 kN)
+    const tieCapacity = 6000; // Updated to ~6000 lbs for heavy-duty
     const requiredTieStrength = windLoad / totalTies || 0; // Avoid division by zero
-    const tieCheck = totalTies > 0 ? (requiredTieStrength <= tieCapacity ? "Pass" : "Fail: Exceeds min capacity (1370 lbs)") : "N/A (No ties required)";
+    const tieCheck = totalTies > 0 ? (requiredTieStrength <= tieCapacity ? "Pass" : "Fail: Exceeds min capacity (6000 lbs)") : "N/A (No ties required)";
 
     // Render material list as a table
     materialList.innerHTML = `
@@ -196,7 +196,7 @@ window.onload = function () {
       <p><strong>Base Safe Working Load (SWL):</strong> ${baseSwlLbs.toFixed(2)} lbs (${loadType} duty, ${standard})</p>
       <p><strong>Wind Load:</strong> ${windLoad.toFixed(2)} lbs (at ${windSpeed} mph)</p>
       <p><strong>Adjusted SWL:</strong> ${effectiveSwlLbs.toFixed(2)} lbs - ${totalWeight <= effectiveSwlLbs ? "Pass" : "Fail: Exceeds SWL"}</p>
-      <p><strong>Leg Load Check:</strong> ${legLoad.toFixed(2)} lbs/standard - ${legLoad <= maxLegLoad ? "Pass" : "Fail: Exceeds max load (1000 lbs)"}</p>
+      <p><strong>Leg Load Check:</strong> ${legLoad.toFixed(2)} lbs/standard - ${legLoad <= maxLegLoad ? "Pass" : "Fail: Exceeds max load (18000 lbs)"}</p>
       <p><strong>Tie Duty:</strong> ${totalTies} ties required (${tiesVertical} vertical x ${tiesHorizontal} horizontal) - ${tieCheck}</p>
     `;
 
@@ -348,13 +348,13 @@ window.onload = function () {
       const adjustedSwlLbs = baseSwlLbs - windLoad;
       const effectiveSwlLbs = Math.max(adjustedSwlLbs, 0); // Ensure non-negative
       const legLoad = totalWeight / ((Math.ceil(width / (bayWidth || 7)) + 1) * (Math.ceil(length / (bayLength || 7)) + 1));
-      const maxLegLoad = 1000; // Example maximum per OSHA/AISC
+      const maxLegLoad = 18000; // Updated to ~18,000 lbs for 80 kN
       const tiesVertical = Math.ceil(height / 16);
       const tiesHorizontal = Math.max(Math.ceil(length / 10), Math.ceil(width / 10));
       const totalTies = tiesVertical * tiesHorizontal;
-      const tieCapacity = 1370; // lbs, TG20:21 minimum
+      const tieCapacity = 6000; // Updated to ~6000 lbs for heavy-duty
       const requiredTieStrength = windLoad / totalTies || 0;
-      const tieCheck = totalTies > 0 ? (requiredTieStrength <= tieCapacity ? "Pass" : "Fail: Exceeds min capacity (1370 lbs)") : "N/A (No ties required)";
+      const tieCheck = totalTies > 0 ? (requiredTieStrength <= tieCapacity ? "Pass" : "Fail: Exceeds min capacity (6000 lbs)") : "N/A (No ties required)";
 
       materialList.innerHTML = `
         <h3>Material List (Loaded)</h3>
@@ -387,7 +387,7 @@ window.onload = function () {
         <p><strong>Base Safe Working Load (SWL):</strong> ${baseSwlLbs.toFixed(2)} lbs (${loadType} duty, ${standard})</p>
         <p><strong>Wind Load:</strong> ${windLoad.toFixed(2)} lbs (at ${windSpeed || 51.6} mph)</p>
         <p><strong>Adjusted SWL:</strong> ${effectiveSwlLbs.toFixed(2)} lbs - ${totalWeight <= effectiveSwlLbs ? "Pass" : "Fail: Exceeds SWL"}</p>
-        <p><strong>Leg Load Check:</strong> ${legLoad.toFixed(2)} lbs/standard - ${legLoad <= maxLegLoad ? "Pass" : "Fail: Exceeds max load (1000 lbs)"}</p>
+        <p><strong>Leg Load Check:</strong> ${legLoad.toFixed(2)} lbs/standard - ${legLoad <= maxLegLoad ? "Pass" : "Fail: Exceeds max load (18000 lbs)"}</p>
         <p><strong>Tie Duty:</strong> ${totalTies} ties required (${tiesVertical} vertical x ${tiesHorizontal} horizontal) - ${tieCheck}</p>
       `;
 
