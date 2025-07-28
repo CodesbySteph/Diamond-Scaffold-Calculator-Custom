@@ -1,4 +1,4 @@
-// Material configuration (weights only, base weights for 7ft components)
+// Material configuration (weights only, with base lengths for scaling)
 const MATERIALS = {
   base: [
     { name: "Screw Jacks", weightPerUnit: 14 },
@@ -35,7 +35,7 @@ window.onload = function () {
     event.preventDefault();
     console.log("Form submitted");
 
-    // Get input values
+    // Get input values with defaults
     const width = parseFloat(document.getElementById("width").value);
     const length = parseFloat(document.getElementById("length").value);
     const height = parseFloat(document.getElementById("height").value);
@@ -50,8 +50,8 @@ window.onload = function () {
       showError("Please enter valid positive numbers for width, length, and height.");
       return;
     }
-    if (bayLength <= 0 || bayWidth <= 0) {
-      showError("Bay length and width must be positive numbers.");
+    if (isNaN(bayLength) || isNaN(bayWidth) || bayLength <= 0 || bayWidth <= 0) {
+      showError("Please enter valid positive numbers for bay length and width.");
       return;
     }
     if (!isNaN(manhourRate) && manhourRate < 0) {
@@ -75,10 +75,10 @@ window.onload = function () {
     materials.push({ name: "Screw Jacks", qty: (baysWide + 1) * (baysLong + 1), weightPerUnit: MATERIALS.base[0].weightPerUnit });
     materials.push({ name: "Starter Collars", qty: (baysWide + 1) * (baysLong + 1), weightPerUnit: MATERIALS.base[1].weightPerUnit });
     materials.push({ name: "Vertical 9'9\"", qty: (baysWide + 1) * (baysLong + 1) * liftsHigh, weightPerUnit: MATERIALS.base[2].weightPerUnit });
-    materials.push({ name: `Horizontal ${bayLength.toFixed(1)}′`, qty: baysWide * (baysLong + 1) * liftsHigh, weightPerUnit: (MATERIALS.base[3].weightPerUnit * bayLength / MATERIALS.base[3].baseLength).toFixed(2) });
-    materials.push({ name: `Horizontal ${bayWidth.toFixed(1)}′`, qty: baysLong * (baysWide + 1) * liftsHigh, weightPerUnit: (MATERIALS.base[4].weightPerUnit * bayWidth / MATERIALS.base[4].baseLength).toFixed(2) });
+    materials.push({ name: `Horizontal ${bayLength.toFixed(1)}′`, qty: baysWide * (baysLong + 1) * liftsHigh, weightPerUnit: MATERIALS.base[3].weightPerUnit * (bayLength / MATERIALS.base[3].baseLength) });
+    materials.push({ name: `Horizontal ${bayWidth.toFixed(1)}′`, qty: baysLong * (baysWide + 1) * liftsHigh, weightPerUnit: MATERIALS.base[4].weightPerUnit * (bayWidth / MATERIALS.base[4].baseLength) });
     materials.push({ name: "Diagonal Braces", qty: totalBays * liftsHigh, weightPerUnit: MATERIALS.base[5].weightPerUnit });
-    materials.push({ name: `Steel Decks ${bayLength.toFixed(1)}′`, qty: totalBays, weightPerUnit: (MATERIALS.base[6].weightPerUnit * bayLength / MATERIALS.base[6].baseLength).toFixed(2) });
+    materials.push({ name: `Steel Decks ${bayLength.toFixed(1)}′`, qty: totalBays, weightPerUnit: MATERIALS.base[6].weightPerUnit * (bayLength / MATERIALS.base[6].baseLength) });
     materials.push({ name: "Top Guardrails", qty: baysWide * 2 + baysLong * 2, weightPerUnit: MATERIALS.base[7].weightPerUnit });
     materials.push({ name: "Toe Boards", qty: baysWide * 2 + baysLong * 2, weightPerUnit: MATERIALS.base[8].weightPerUnit });
 
@@ -262,8 +262,8 @@ window.onload = function () {
       document.getElementById("stairTower").checked = includeStair;
       document.getElementById("manhourRate").value = manhourRate || "";
       document.getElementById("loadType").value = loadType || "light";
-      document.getElementById("bayLength").value = bayLength || "";
-      document.getElementById("bayWidth").value = bayWidth || "";
+      document.getElementById("bayLength").value = bayLength || 7; // Default to 7 if undefined
+      document.getElementById("bayWidth").value = bayWidth || 7; // Default to 7 if undefined
 
       let totalWeight = 0;
       materials.forEach(item => {
